@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Tic Tac Toe</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-900 text-white flex flex-col min-h-screen items-center justify-between">
+
+  <!-- Welcome Modal -->
+  <div id="welcomeModal" class="fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center z-50">
+    <div class="bg-white text-black rounded-2xl shadow-xl p-8 max-w-sm w-full text-center animate-fade-in-down">
+      <h1 class="text-2xl font-bold mb-4">Selamat Datang!</h1>
+      <p class="mb-4">Masukkan nama kamu untuk mulai bermain:</p>
+      <input type="text" id="playerName" placeholder="Nama kamu" class="w-full px-4 py-2 rounded-md border border-gray-300 mb-4" />
+      <button onclick="startGame()" class="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition">Mulai</button>
+    </div>
+  </div>
+
+  <!-- Game Container -->
+  <div class="flex flex-col items-center justify-center flex-grow pt-8">
+    <h1 class="text-3xl font-bold mb-2 animate-pulse">Tic Tac Toe</h1>
+    <p id="welcomeText" class="mb-4 text-xl text-gray-300"></p>
+    <div class="grid grid-cols-3 gap-2">
+      <!-- 9 game cells -->
+      <div class="cell" data-cell></div>
+      <div class="cell" data-cell></div>
+      <div class="cell" data-cell></div>
+      <div class="cell" data-cell></div>
+      <div class="cell" data-cell></div>
+      <div class="cell" data-cell></div>
+      <div class="cell" data-cell></div>
+      <div class="cell" data-cell></div>
+      <div class="cell" data-cell></div>
+    </div>
+    <p id="gameMessage" class="mt-4 text-xl font-semibold"></p>
+    <button onclick="restartGame()" class="mt-4 bg-green-600 px-4 py-2 rounded-lg hover:bg-green-700">Main Lagi</button>
+  </div>
+
+  <!-- Bottom Navigation -->
+  <div class="w-full bg-gray-800 p-4 flex justify-around text-center text-sm">
+    <div>
+      <p class="font-semibold">Nama</p>
+      <p id="displayName">-</p>
+    </div>
+    <div>
+      <p class="font-semibold">Skor X</p>
+      <p id="scoreX">0</p>
+    </div>
+    <div>
+      <p class="font-semibold">Skor O</p>
+      <p id="scoreO">0</p>
+    </div>
+    <div>
+      <p class="font-semibold">Giliran</p>
+      <p id="turn">X</p>
+    </div>
+  </div>
+
+  <!-- Victory Modal -->
+  <div id="victoryModal" class="fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center z-50" style="display:none;">
+    <div class="bg-white text-black rounded-2xl shadow-xl p-8 max-w-sm w-full text-center animate-fade-in-down">
+      <h1 id="victoryMessage" class="text-3xl font-bold mb-4">Pemenang: </h1>
+      <p class="text-lg mb-4" id="victoryPlayer"></p>
+      <button onclick="closeVictoryModal()" class="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition">Tutup</button>
+    </div>
+  </div>
+
+  <style>
+    .cell {
+      width: 80px;
+      height: 80px;
+      background-color: #1f2937;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 2rem;
+      font-weight: bold;
+      border-radius: 0.5rem;
+      cursor: pointer;
+      transition: background-color 0.2s;
+    }
+    .cell:hover {
+      background-color: #374151;
+    }
+    .cell.X {
+      color: #3b82f6;
+    }
+    .cell.O {
+      color: #f59e0b;
+    }
+    .winner {
+      background-color: #34d399; /* Green color for winner */
+      animation: winnerAnimation 1s ease-out;
+    }
+    @keyframes winnerAnimation {
+      0% {
+        transform: scale(1);
+      }
+      50% {
+        transform: scale(1.1);
+      }
+      100% {
+        transform: scale(1);
+      }
+    }
+    @keyframes fade-in-down {
+      0% {
+        opacity: 0;
+        transform: translateY(-20px);
+      }
+      100% {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+    .animate-fade-in-down {
+      animation: fade-in-down 0.5s ease-out;
+    }
+  </style>
+
+  <script>
+    const cells = document.querySelectorAll("[data-cell]");
+    const gameMessage = document.getElementById("gameMessage");
+    const displayName = document.getElementById("displayName");
+    const welcomeModal = document.getElementById("welcomeModal");
+    const welcomeText = document.getElementById("welcomeText");
+    const turnDisplay = document.getElementById("turn");
+    const scoreX = document.getElementById("scoreX");
+    const scoreO = document.getElementById("scoreO");
+    const victoryModal = document.getElementById("victoryModal");
+    const victoryMessage = document.getElementById("victoryMessage");
+    const victoryPlayer = document.getElementById("victoryPlayer");
+
+    let currentPlayer = "X";
+    let playerName = "";
+    let gameActive = true;
+    let playerScore = { X: 0, O: 0 };
+    let board = ["", "", "", "", "", "", "", "", ""];
+
+    function startGame() {
+      const nameInput = document.getElementById("playerName");
+      playerName = nameInput.value.trim();
+      if (!playerName) {
+        alert("Masukkan nama kamu!");
+        return;
+      }
+      displayName.textContent = playerName;
+      welcomeText.textContent = `Selamat bermain, ${playerName}!`;
+      welcomeModal.style.display = "none";
+      resetBoard();
+    }
+
+    function handleClick(e) {
+      if (!gameActive) return;
+
+      const cell = e.target;
+      const cellIndex = [...cells].indexOf(cell);
+
+      if (board[cellIndex] !== "") return; // Cell already taken
+
+      // Player move
+      board[cellIndex] = currentPlayer;
+      cell.classList.add(currentPlayer);
+      cell.textContent = currentPlayer;
+
+      if (checkWin(currentPlayer)) {
+        gameMessage.textContent = `${currentPlayer} menang!`;
+        playerScore[currentPlayer]++;
+        updateScore();
+        highlightWinner();
+        showVictoryModal(currentPlayer);
+        gameActive = false;
+      } else if (isDraw()) {
+        gameMessage.textContent = "Seri!";
+        gameActive = false;
+      } else {
+        currentPlayer = currentPlayer === "X" ? "O" : "X";
+        turnDisplay.textContent = currentPlayer;
+        if (currentPlayer === "O" && !gameActive) aiMove(); // AI's turn
+      }
+    }
+
+    function checkWin(player) {
+      const combos = [
+        [0,1,2], [3,4,5], [6,7,8], // rows
+        [0,3,6], [1,4,7], [2,5,8], // columns
+        [0,4,8], [2,4,6], // diagonals
+      ];
+      return combos.some(combo => 
+        combo.every(index => cells[index].classList.contains(player))
+      );
+    }
+
+    function isDraw() {
+      return board.every(cell => cell !== "");
+    }
+
+    function highlightWinner() {
+      const combos = [
+        [0,1,2], [3,4,5], [6,7,8],
+        [0,3,6], [1,4,7], [2,5,8],
+        [0,4,8], [2,4,6],
+      ];
+      for (const combo of combos) {
+        const [a, b, c] = combo;
+        if (cells[a].classList.contains(currentPlayer) &&
+            cells[b].classList.contains(currentPlayer) &&
+            cells[c].classList.contains(currentPlayer)) {
+          cells[a].classList.add('winner');
+          cells[b].classList.add('winner');
+          cells[c].classList.add('winner');
+          break;
+        }
+      }
+    }
+
+    function aiMove() {
+      const emptyCells = [...cells].filter(cell => cell.textContent === "");
+      if (emptyCells.length === 0) return;
+      const randomCell = emptyCells[Math.floor(Math.random() * emptyCells.length)];
+      const randomIndex = [...cells].indexOf(randomCell);
+      board[randomIndex] = "O";
+      randomCell.classList.add("O");
+      randomCell.textContent = "O";
+
+      if (checkWin("O")) {
+        gameMessage.textContent = "AI menang!";
+        playerScore.O++;
+        updateScore();
+        highlightWinner();
+        showVictoryModal("O");
+        gameActive = false;
+      } else if (isDraw()) {
+        gameMessage.textContent = "Seri!";
+        gameActive = false;
+      } else {
+        currentPlayer = "X";
+        turnDisplay.textContent = "X";
+      }
+    }
+
+    function updateScore() {
+      scoreX.textContent = playerScore.X;
+      scoreO.textContent = playerScore.O;
+    }
+
+    function resetBoard() {
+      gameActive = true;
+      board = ["", "", "", "", "", "", "", "", ""];
+      cells.forEach(cell => {
+        cell.textContent = "";
+        cell.classList.remove("X", "O", "winner");
+        cell.addEventListener("click", handleClick, { once: true });
+      });
+      gameMessage.textContent = "";
+    }
+
+    function restartGame() {
+      resetBoard();
+      playerScore = { X: 0, O: 0 };
+      updateScore();
+    }
+
+    function showVictoryModal(player) {
+      victoryPlayer.textContent = player === "X" ? "Pemain X" : "Pemain O";
+      victoryMessage.textContent = `Pemenang: ${player === "X" ? "Pemain X" : "Pemain O"}`;
+      victoryModal.style.display = "flex";
+    }
+
+    function closeVictoryModal() {
+      victoryModal.style.display = "none";
+      resetBoard();
+    }
+
+    cells.forEach(cell => cell.addEventListener("click", handleClick, { once: true }));
+  </script>
+</body>
+</html>
